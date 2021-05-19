@@ -1,18 +1,38 @@
-import * as sns from '@aws-cdk/aws-sns';
-import * as subs from '@aws-cdk/aws-sns-subscriptions';
-import * as sqs from '@aws-cdk/aws-sqs';
 import * as cdk from '@aws-cdk/core';
+import * as lambda from '@aws-cdk/aws-lambda';
+import * as dynamodb from '@aws-cdk/aws-dynamodb';
+import * as apigw from '@aws-cdk/aws-apigateway';
 
 export class CdkServerlessGetStartedStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+  
+    // dynamodb table definition
+    const table = new dynamodb.Table(this, 'Hello', {
+      partitionKey: { name: "name", type: dynamodb.AttributeType.STRING},
+    });  
 
-    const queue = new sqs.Queue(this, 'CdkServerlessGetStartedQueue', {
-      visibilityTimeout: cdk.Duration.seconds(300)
-    });
+    // lambda function
+    const dynamoLambda = new lambda.Function(this, "DynamoLambdaHandler", {
+      runtime: lambda.Runtime.NODEJS_14_X,
+      code: lambda.Code.fromAsset("functions"),
+      handler: "function.handler",
+      environment: {
+        HELLO_TABLE_NAME: table.tableName
+      },
+    })
 
-    const topic = new sns.Topic(this, 'CdkServerlessGetStartedTopic');
+    // permission to the lamda to dynamo table
+    table.grantReadWriteData(dynamoLambda);
 
-    topic.addSubscription(new subs.SqsSubscription(queue));
+    // create the API gateway with one method and path
+    const api = new apigw.RestApi(this, "hello-api");
+
+    api.root.resourceForPath("Hello").addMethod("GET", new apigw.LambdaIntegration(dynamoLambda));
+
+  
   }
+
+
+
 }
