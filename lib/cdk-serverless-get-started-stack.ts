@@ -28,6 +28,10 @@ export class CdkServerlessGetStartedStack extends cdk.Stack {
     // create the API gateway with one method and path
     const api = new apigateway.RestApi(this, "device-token-api");
 
+    api.root.resourceForPath("device-token-endpoint").addMethod("GET", new apigateway.LambdaIntegration(dynamoLambda), {
+      apiKeyRequired: true
+    });
+
     // api key logic
     const apiKeyName = "auth-api-key"
     const apiKey = new apigateway.ApiKey(this, `auth-api-key-id`, {
@@ -35,17 +39,9 @@ export class CdkServerlessGetStartedStack extends cdk.Stack {
                 description: `APIKey used by my api to do awesome stuff`,
                 value: "THISISTHESECRETVALUE123!!",
                 enabled: true,
-            })
+                resources: [api]
+            });
 
-    const usagePlanProps: apigateway.UsagePlanProps = {
-      name: "MyUsagePlan",
-      apiKey,
-    }           
-
-    api.root.resourceForPath("device-token-endpoint").addMethod("GET", new apigateway.LambdaIntegration(dynamoLambda));
-    api.addUsagePlan("MyUsagePlan", usagePlanProps)
-  
-  
   }
 
 
